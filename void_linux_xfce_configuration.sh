@@ -33,12 +33,10 @@ echo "[Paso 2] Verificando paquetes..."
 PACKAGES=(chromium htop fastfetch xournalpp okular git github-cli xfce4-screenshooter)
 
 for pkg in "${PACKAGES[@]}"; do
-    # CORRECCIÓN: 'xbps-query $pkg' verifica si está instalado correctamente
     if xbps-query "$pkg" >/dev/null 2>&1; then
         echo "[Paso 2] $pkg ya está instalado."
     else
         echo "[Paso 2] $pkg no está instalado. Instalando..."
-        # CORRECCIÓN: Se elimina la 'S' para no resincronizar en cada iteración del bucle
         sudo xbps-install -y "$pkg"
         if [ $? -ne 0 ]; then
             echo "[Paso 2] Error durante la instalación de $pkg. Abortando."
@@ -56,19 +54,17 @@ if [ ! -d "$HOME/.config/xfce4/xfconf/xfce-perchannel-xml" ]; then
     echo "[Paso 3] No existe. Creando..."
     mkdir -p "$HOME/.config/xfce4/xfconf/xfce-perchannel-xml"
 else
-    echo "[Paso 3] Ya existe."
+    echo "[Paso 3] El directorio ya existe."
 fi
 
 # ----------------------------------------------------
-# Paso 4: Verificar y crear xfce4-keyboard-shortcuts.xml
+# Paso 4: Configurar xfce4-keyboard-shortcuts.xml
 # ----------------------------------------------------
-echo "[Paso 4] Verificando xfce4-keyboard-shortcuts.xml..."
+echo "[Paso 4] Configurando xfce4-keyboard-shortcuts.xml..."
+TARGET_KEYS="$HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-keyboard-shortcuts.xml"
+TMP_KEYS=$(mktemp)
 
-if [ -f "$HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-keyboard-shortcuts.xml" ]; then
-    echo "[Paso 4] xfce4-keyboard-shortcuts.xml ya existe. No se sobrescribirá."
-else
-    echo "[Paso 4] No existe. Creando xfce4-keyboard-shortcuts.xml..."
-    cat > "$HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-keyboard-shortcuts.xml" << 'EOF'
+cat > "$TMP_KEYS" << 'EOF'
 <?xml version="1.1" encoding="UTF-8"?>
 
 <channel name="xfce4-keyboard-shortcuts" version="1.0">
@@ -250,19 +246,25 @@ else
 </channel>
 EOF
 
-    echo "[Paso 4] xfce4-keyboard-shortcuts.xml creado correctamente."
+if [ ! -f "$TARGET_KEYS" ]; then
+    echo "[Paso 4] No existe. Creando xfce4-keyboard-shortcuts.xml..."
+    mv "$TMP_KEYS" "$TARGET_KEYS"
+elif ! cmp -s "$TMP_KEYS" "$TARGET_KEYS"; then
+    echo "[Paso 4] El archivo existe pero es diferente. Sobrescribiendo..."
+    mv "$TMP_KEYS" "$TARGET_KEYS"
+else
+    echo "[Paso 4] El archivo ya existe y es idéntico. No se hacen cambios."
+    rm "$TMP_KEYS"
 fi
 
 # ----------------------------------------------------
-# Paso 5: Verificar y crear xfwm4.xml
+# Paso 5: Configurar xfwm4.xml
 # ----------------------------------------------------
-echo "[Paso 5] Verificando xfwm4.xml..."
+echo "[Paso 5] Configurando xfwm4.xml..."
+TARGET_XFWM4="$HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfwm4.xml"
+TMP_XFWM4=$(mktemp)
 
-if [ -f "$HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfwm4.xml" ]; then
-    echo "[Paso 5] xfwm4.xml ya existe. No se sobrescribirá."
-else
-    echo "[Paso 5] No existe. Creando xfwm4.xml..."
-    cat > "$HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfwm4.xml" << 'EOF'
+cat > "$TMP_XFWM4" << 'EOF'
 <?xml version="1.1" encoding="UTF-8"?>
 
 <channel name="xfwm4" version="1.0">
@@ -356,7 +358,15 @@ else
 </channel>
 EOF
 
-    echo "[Paso 5] xfwm4.xml creado correctamente."
+if [ ! -f "$TARGET_XFWM4" ]; then
+    echo "[Paso 5] No existe. Creando xfwm4.xml..."
+    mv "$TMP_XFWM4" "$TARGET_XFWM4"
+elif ! cmp -s "$TMP_XFWM4" "$TARGET_XFWM4"; then
+    echo "[Paso 5] El archivo existe pero es diferente. Sobrescribiendo..."
+    mv "$TMP_XFWM4" "$TARGET_XFWM4"
+else
+    echo "[Paso 5] El archivo ya existe y es idéntico. No se hacen cambios."
+    rm "$TMP_XFWM4"
 fi
 
 # ----------------------------------------------------
@@ -364,5 +374,5 @@ fi
 # ----------------------------------------------------
 echo "=== Instalación y configuración de XFCE completada ==="
 echo ""
-echo "IMPORTANTE: Para que los atajos surtan efecto, reinicia la sesión o ejecuta 'xfce4-panel -r' y 'xfwm4 --replace'."
+echo "IMPORTANTE: Para que los atajos surtan efecto, reinicia el equipo."
 echo ""
